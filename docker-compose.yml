@@ -1,0 +1,107 @@
+name: colosys-back
+
+services:
+  # ---------------------------------------------------------------- MySQL --
+  # Keyrock stores users, applications and tokens here.
+  mysql-db:
+    image: mysql:5.7
+    platform: linux/amd64          # mysql:5.7 has no ARM build (Apple Silicon)
+    container_name: auth-mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me-db}
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # -------------------------------------------------------------- Keyrock --
+  # FIWARE Identity Manager. Web GUI + REST API on port 3005.
+  keyrock:
+    image: ${KEYROCK_IMAGE:-quay.io/fiware/idm}
+    container_name: auth-keyrock
+    restart: unless-stopped
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    ports:
+      - "3005:3005"                # GUI: http://localhost:3005 (remove in production)
+    environment:
+      IDM_DB_HOST: mysql-db
+      IDM_DB_USER: root
+      IDM_DB_PASS: ${MYSQL_ROOT_PASSWORD:-change-me-db}
+      IDM_HOST: http://localhost:3005
+      IDM_PORT: "3005"
+      IDM_HTTPS_ENABLED: "false"
+      # The admin account is created ONCE, the first time the database is empty.
+      IDM_ADMIN_USER: admin
+      IDM_ADMIN_EMAIL: ${KEYROCK_ADMIN_EMAIL:-admin@example.com}
+      IDM_ADMIN_PASS: ${KEYROCK_ADMIN_PASSWORD:-change-me-admin}
+
+  # ------------------------------------------------------------------ API --
+  # Your back-end: register / login / logout / me, backed by Keyrock.
+  api:
+    build: ./api
+    container_name: auth-api
+    restart: unless-stopped
+    depends_on:
+      - keyrock
+    ports:
+      - "8000:8000"                # http://localhost:8000/docs
+    environment:
+      KEYROCK_URL: http://keyrock:3005
+      KEYROCK_ADMIN_EMAIL: ${KEYROCK_ADMIN_EMAIL:-admin@example.com}
+      KEYROCK_ADMIN_PASSWORD: ${KEYROCK_ADMIN_PASSWORD:-change-me-admin}
+      # Leave both empty: the API registers its own OAuth app in Keyrock on
+      # first start and keeps the credentials in the api-data volume.
+      KEYROCK_CLIENT_ID: ${KEYROCK_CLIENT_ID:-}
+      KEYROCK_CLIENT_SECRET: ${KEYROCK_CLIENT_SECRET:-}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}     # set to true behind HTTPS
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      CREDENTIALS_FILE: /data/keyrock_app.json
+      # ---- FIWARE (the course stack, running in its own compose project) ----
+      # Service names below are the ones in the course's docker-compose.yml.
+      ORION_URL: ${ORION_URL:-http://orion:1026}
+      IOTA_URL: ${IOTA_URL:-http://iot-agent:4041}
+      IOTA_CBROKER: ${IOTA_CBROKER:-http://orion:1026}
+      IOTA_API_KEY: ${IOTA_API_KEY:-TEF}
+      FIWARE_SERVICE: ${FIWARE_SERVICE:-smartlamp}
+      FIWARE_SERVICEPATH: ${FIWARE_SERVICEPATH:-/}
+      MQTT_HOST: ${MQTT_HOST:-localhost}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      # Orion (inside the FIWARE network) calls this URL. Leave NOTIFY_TOKEN empty
+      # to get a random secret on each start.
+      NOTIFY_URL: ${NOTIFY_URL:-http://smartlamp-api:8000/internal/orion/notify}
+      NOTIFY_TOKEN: ${NOTIFY_TOKEN:-}
+      # ---- Automation ----
+      AUTOMATION_ENABLED: ${AUTOMATION_ENABLED:-true}
+      AUTOMATION_RETRY_SECONDS: ${AUTOMATION_RETRY_SECONDS:-30}
+      # ---- History (STH-Comet from the same FIWARE stack) ----
+      STH_URL: ${STH_URL:-http://fiware-sth-comet:8666}
+      STH_NOTIFY_URL: ${STH_NOTIFY_URL:-http://fiware-sth-comet:8666/notify}
+      STH_SERVICE: ${STH_SERVICE:-}            # empty = same as FIWARE_SERVICE
+      STH_SERVICEPATH: ${STH_SERVICEPATH:-}    # empty = same as FIWARE_SERVICEPATH
+    volumes:
+      - api-data:/data
+    networks:
+      default: {}                  # talks to Keyrock
+      fiware:                      # talks to Orion / IoT Agent, and Orion talks back
+        aliases:
+          - smartlamp-api
+
+networks:
+  # The course FIWARE stack must be running first: this network is created by it.
+  # Check the real name with:  docker network ls   (usually <fiware-folder>_default)
+  fiware:
+    external: true
+    name: ${FIWARE_NETWORK:-fiware_default}
+
+volumes:
+  mysql-data:
+  api-data:
