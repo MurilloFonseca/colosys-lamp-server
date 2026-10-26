@@ -11,7 +11,3 @@ wheels/
 
 # Environment variables
 .env
-
-# Editor files
-.vscode
-ruff.toml
