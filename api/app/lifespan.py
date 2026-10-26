@@ -1,16 +1,17 @@
-from _asyncio import Task
-from .core.automation import Automation
-from .core.hub import Hub
-from .core.keyrock import KeyrockClient
-import httpx
 import asyncio
-from . import config
-from .core.fiware import FiwareClient
 import logging
+from _asyncio import Task
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
+
+from . import config
+from .core.automation import Automation
+from .core.fiware import FiwareClient
+from .core.hub import Hub
+from .core.keyrock import KeyrockClient
 
 log: logging.Logger = logging.getLogger("api")
 

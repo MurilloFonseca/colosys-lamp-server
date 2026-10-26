@@ -1,11 +1,11 @@
-from ..common.exeptions import FiwareError
-import time
-from typing import TypedDict, Literal
 import asyncio
 import logging
+import time
+from typing import Literal, TypedDict
 
 from .. import config
-from .fiware import FiwareClient, ENTITY_PREFIX, Thresholds
+from ..common.exeptions import FiwareError
+from .fiware import ENTITY_PREFIX, FiwareClient, Thresholds
 
 log: logging.Logger = logging.getLogger("automation")
 

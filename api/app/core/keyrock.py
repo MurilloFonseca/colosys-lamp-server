@@ -56,9 +56,13 @@ USER_CACHE_TTL: float = 30  # 30 s
 
 # --- Helpers -------------------------------------------------------------------
 def _err_msg(res: httpx.Response) -> str:
-    err: Error = res.json().get("error", {})
+    try:
+        err: Error = res.json().get("error", {})
 
-    return err.get("message", f"HTTP {res.status_code}")
+        return err.get("message", f"HTTP {res.status_code}")
+
+    except AttributeError:
+        return res.json()
 
 
 # --- Client --------------------------------------------------------------------
