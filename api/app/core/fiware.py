@@ -492,8 +492,8 @@ class FiwareClient:
                 return False
 
             return (
-                headers.get("fiware-service") == config.STH_SERVICE
-                and headers.get("fiware-servicepath") == config.STH_SERVICEPATH
+                headers.get("fiware-service") == config.FIWARE_SERVICE
+                and headers.get("fiware-servicepath") == config.FIWARE_SERVICEPATH
             )
 
         body: CreateSubscriptionBody = {
@@ -506,8 +506,8 @@ class FiwareClient:
                 "httpCustom": {
                     "url": config.STH_NOTIFY_URL,
                     "headers": {
-                        "Fiware-Service": config.STH_SERVICE,
-                        "Fiware-ServicePath": config.STH_SERVICEPATH,
+                        "Fiware-Service": config.FIWARE_SERVICE,
+                        "Fiware-ServicePath": config.FIWARE_SERVICEPATH,
                     },
                 },
                 "attrs": HISTORY_ATTRS,

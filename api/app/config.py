@@ -56,17 +56,11 @@ NOTIFY_TOKEN: str = os.getenv("NOTIFY_TOKEN") or secrets.token_urlsafe(32)
 STH_URL: str = os.getenv("STH_URL", "http://fiware-sth-comet:8666").rstrip("/")
 # Where Orion sends notifications for STH-Comet (must be reachable FROM the Orion container).
 STH_NOTIFY_URL: str = os.getenv("STH_NOTIFY_URL", "http://fiware-sth-comet:8666/notify")
-# STH keeps its data per service / service path. The Orion subscription forces these headers
-# and the queries use the same ones, so what is written is always what is read.
-STH_SERVICE: str = os.getenv("STH_SERVICE") or FIWARE_SERVICE
-STH_SERVICEPATH: str = os.getenv("STH_SERVICEPATH") or FIWARE_SERVICEPATH
 # How many measurements the history keeps/returns. STH-Comet rejects lastN above its
 # MAX_PAGE_SIZE setting, which defaults to 100.
 HISTORY_SIZE = int(os.getenv("HISTORY_SIZE", "100"))
 
 # --------------------------------------------------------------- Automation --
-# Turn the lamp on/off with an Orion command when its readings leave the limits.
-AUTOMATION_ENABLED: bool = os.getenv("AUTOMATION_ENABLED", "true").lower() == "true"
 # The same command is not repeated for this many seconds, to give the device time to answer.
 # After that it is sent again (a device that was offline never saw the first one).
 AUTOMATION_RETRY_SECONDS: float = float(os.getenv("AUTOMATION_RETRY_SECONDS", "30"))

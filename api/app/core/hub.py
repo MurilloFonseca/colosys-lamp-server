@@ -47,7 +47,7 @@ type Event = tuple[str, EventPayload]
 
 class Hub:
     def __init__(self) -> None:
-        self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
+        self._subs: dict[str, set[asyncio.Queue[Event]]] = defaultdict(set)
 
     def subscribe(self, user_id: str) -> asyncio.Queue[Event]:
         queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=100)
