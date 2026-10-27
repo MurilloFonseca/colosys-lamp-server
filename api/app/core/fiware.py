@@ -54,6 +54,7 @@ class Lamp(TypedDict):
     thresholds: Thresholds
     on_status: Literal["OK", "ERROR", "PENDING", "UNKNOWN"]
     off_status: Literal["OK", "ERROR", "PENDING", "UNKNOWN"]
+    createdAt: str
 
 
 class Entity(TypedDict):

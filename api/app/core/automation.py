@@ -1,31 +1,19 @@
 import asyncio
 import logging
 import time
-from typing import Literal, TypedDict
+from typing import Literal
 
 from .. import config
 from ..common.exeptions import FiwareError
-from .fiware import ENTITY_PREFIX, FiwareClient, Thresholds
+from .fiware import ENTITY_PREFIX, FiwareClient, Lamp, Thresholds
 
 log: logging.Logger = logging.getLogger("automation")
-
-
-class Entity(TypedDict):
-    id: str
-    type: str
-    owner: str
-    name: str
-    luminosity: float | None
-    temperature: float | None
-    humidity: float | None
-    state: Literal["on", "off"]
-    thresholds: Thresholds
 
 
 MEASURES = ("luminosity", "temperature", "humidity")
 
 
-def out_of_limits(thresholds: Thresholds, readings: Entity) -> list[str]:
+def out_of_limits(thresholds: Thresholds, readings: Lamp) -> list[str]:
     reasons: list[str] = []
     for measure in MEASURES:
         value: float | None = readings.get(measure)
@@ -45,7 +33,7 @@ def out_of_limits(thresholds: Thresholds, readings: Entity) -> list[str]:
     return reasons
 
 
-def desired_state(entity: Entity) -> tuple[Literal["on", "off"] | None, list[str]]:
+def desired_state(entity: Lamp) -> tuple[Literal["on", "off"] | None, list[str]]:
     if all(entity.get(measure) is None for measure in MEASURES):
         return None, []
 
@@ -62,7 +50,7 @@ class Automation:
         self._sent: dict[str, tuple[str, float]] = {}
         self._tasks: set[asyncio.Task] = set()
 
-    async def apply(self, entity: Entity) -> None | Literal["on", "off"]:
+    async def apply(self, entity: Lamp) -> None | Literal["on", "off"]:
         entity_id: str = entity.get("id", "")
         command, reasons = desired_state(entity)
 
@@ -103,12 +91,12 @@ class Automation:
 
         return command
 
-    def schedule(self, entity: Entity) -> None:
+    def schedule(self, entity: Lamp) -> None:
         task: asyncio.Task[None] = asyncio.create_task(self._run(entity))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
-    async def _run(self, entity: Entity) -> None:
+    async def _run(self, entity: Lamp) -> None:
         try:
             await self.apply(entity)
 
