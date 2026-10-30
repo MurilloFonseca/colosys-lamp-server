@@ -30,12 +30,14 @@ services:
       mysql-db:
         condition: service_healthy
     ports:
-      - "3005:3005"                # GUI: http://localhost:3005 (remove in production)
+      # Admin GUI, reachable only from this machine (use an SSH tunnel on a remote server).
+      # The API talks to Keyrock over the internal Docker network, so nothing else needs this port.
+      - "127.0.0.1:3005:3005"
     environment:
       IDM_DB_HOST: mysql-db
       IDM_DB_USER: root
       IDM_DB_PASS: ${MYSQL_ROOT_PASSWORD:-change-me-db}
-      IDM_HOST: http://localhost:3005
+      IDM_HOST: ${IDM_HOST:-http://localhost:3005}
       IDM_PORT: "3005"
       IDM_HTTPS_ENABLED: "false"
       # The admin account is created ONCE, the first time the database is empty.
@@ -53,6 +55,10 @@ services:
       - keyrock
     ports:
       - "8000:8000"                # http://localhost:8000/docs
+    extra_hosts:
+      # Lets the API reach services on THIS machine (e.g. an SSH tunnel) as host.docker.internal
+      # on Linux too; Docker Desktop (Windows/Mac) already provides the name.
+      - "host.docker.internal:host-gateway"
     environment:
       KEYROCK_URL: http://keyrock:3005
       KEYROCK_ADMIN_EMAIL: ${KEYROCK_ADMIN_EMAIL:-admin@example.com}
@@ -65,42 +71,39 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}     # set to true behind HTTPS
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
       CREDENTIALS_FILE: /data/keyrock_app.json
-      # ---- FIWARE (the course stack, running in its own compose project) ----
-      # Service names below are the ones in the course's docker-compose.yml.
-      ORION_URL: ${ORION_URL:-http://orion:1026}
-      IOTA_URL: ${IOTA_URL:-http://iot-agent:4041}
+      # ---- FIWARE: where it runs does not matter (this machine, an AWS server...) ----
+      # The API reaches Orion / IoT Agent / STH-Comet through their PUBLISHED ports on FIWARE_HOST.
+      #   AWS server      : FIWARE_HOST=<public DNS or IP of the server>
+      #   same computer   : FIWARE_HOST=host.docker.internal   (Linux: the docker0 IP, e.g. 172.17.0.1)
+      # Compose stops with a message if FIWARE_HOST or NOTIFY_URL is missing in .env.
+      ORION_URL: ${ORION_URL:-http://${FIWARE_HOST:?Set FIWARE_HOST in .env (address of the FIWARE server)}:1026}
+      IOTA_URL: ${IOTA_URL:-http://${FIWARE_HOST}:4041}
+      STH_URL: ${STH_URL:-http://${FIWARE_HOST}:8666}
+      # These two are resolved INSIDE the FIWARE server's own Docker network, so the defaults hold
+      # when FIWARE runs the course's docker-compose.yml.
       IOTA_CBROKER: ${IOTA_CBROKER:-http://orion:1026}
+      STH_NOTIFY_URL: ${STH_NOTIFY_URL:-http://fiware-sth-comet:8666/notify}
       IOTA_API_KEY: ${IOTA_API_KEY:-TEF}
       FIWARE_SERVICE: ${FIWARE_SERVICE:-smartlamp}
       FIWARE_SERVICEPATH: ${FIWARE_SERVICEPATH:-/}
-      MQTT_HOST: ${MQTT_HOST:-localhost}
+      # Address a DEVICE (ESP32) uses to reach Mosquitto; returned by POST /api/lamps.
+      # With FIWARE on AWS this is the AWS server, so even the Wokwi simulator can reach it.
+      MQTT_HOST: ${MQTT_HOST:-${FIWARE_HOST}}
       MQTT_PORT: ${MQTT_PORT:-1883}
-      # Orion (inside the FIWARE network) calls this URL. Leave NOTIFY_TOKEN empty
-      # to get a random secret on each start.
-      NOTIFY_URL: ${NOTIFY_URL:-http://smartlamp-api:8000/internal/orion/notify}
+      # The URL Orion (on the FIWARE server) calls to deliver each reading to this API.
+      # It must be reachable FROM THE FIWARE SERVER, so a laptop behind NAT needs a VPN
+      # (Tailscale) or a tunnel (ngrok): see DEPLOY-AWS.md. Leave NOTIFY_TOKEN empty to get a
+      # random secret on each start.
+      NOTIFY_URL: ${NOTIFY_URL:?Set NOTIFY_URL in .env (how the FIWARE server reaches this API, e.g. http://100.64.0.5:8000/internal/orion/notify)}
       NOTIFY_TOKEN: ${NOTIFY_TOKEN:-}
       # ---- Automation ----
       AUTOMATION_ENABLED: ${AUTOMATION_ENABLED:-true}
       AUTOMATION_RETRY_SECONDS: ${AUTOMATION_RETRY_SECONDS:-30}
-      # ---- History (STH-Comet from the same FIWARE stack) ----
-      STH_URL: ${STH_URL:-http://fiware-sth-comet:8666}
-      STH_NOTIFY_URL: ${STH_NOTIFY_URL:-http://fiware-sth-comet:8666/notify}
+      # ---- History (STH-Comet from the same FIWARE stack; its URLs are set above) ----
       STH_SERVICE: ${STH_SERVICE:-}            # empty = same as FIWARE_SERVICE
       STH_SERVICEPATH: ${STH_SERVICEPATH:-}    # empty = same as FIWARE_SERVICEPATH
     volumes:
       - api-data:/data
-    networks:
-      default: {}                  # talks to Keyrock
-      fiware:                      # talks to Orion / IoT Agent, and Orion talks back
-        aliases:
-          - smartlamp-api
-
-networks:
-  # The course FIWARE stack must be running first: this network is created by it.
-  # Check the real name with:  docker network ls   (usually <fiware-folder>_default)
-  fiware:
-    external: true
-    name: ${FIWARE_NETWORK:-fiware_default}
 
 volumes:
   mysql-data:
