@@ -336,7 +336,7 @@ class FiwareClient:
             params={
                 "type": "Lamp",
                 "q": f"owner=='{owner}'",
-                "options": "keyValues",
+                "options": "keyValues,skipForwarding",
                 "limit": 1_000,
             },
         )
@@ -360,7 +360,7 @@ class FiwareClient:
                 "type": "Lamp",
                 "name": {"type": "Text", "value": name},
                 "owner": {"type": "Text", "value": owner},
-                "createdAt": {
+                "createdAt": { 
                     "type": "DateTime",
                     "value": created_at.astimezone(UTC).isoformat(
                         timespec="milliseconds"
