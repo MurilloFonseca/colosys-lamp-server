@@ -68,7 +68,7 @@ async def login(
         access_token,
         max_age=int(tokens.get("expires_in", 3600)),
         httponly=True,  # JavaScript cannot read it
-        samesite="lax",
+        samesite="none",
         secure=config.COOKIE_SECURE,
         path="/",
     )
