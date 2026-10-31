@@ -1,2 +1,4 @@
 [lint.per-file-ignores]
 "deps.py" = ["B008"]
+"lifespan.py" = ["BLE001"]
+"api/app/routes/*" = ["B008"]

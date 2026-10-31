@@ -6,18 +6,18 @@ from .fiware import Thresholds
 
 
 class CommandStatus(TypedDict):
-    on: Literal["OK", "ERROR", "PENDING", "UNKNOWN"]
-    off: Literal["OK", "ERROR", "PENDING", "UNKNOWN"]
+    on: Literal["OK", "ERROR", "PENDING", "UNKNOWN"] | None
+    off: Literal["OK", "ERROR", "PENDING", "UNKNOWN"] | None
 
 
 class UpsertEvent(TypedDict):
     id: str
     deviceId: str
     name: str
-    state: Literal["on", "off"]
-    luminosity: float
-    temperature: float
-    humidity: float
+    state: Literal["on", "off"] | None
+    luminosity: float | None
+    temperature: float | None
+    humidity: float | None
     thresholds: Thresholds
     commandStatus: CommandStatus
 
@@ -26,10 +26,10 @@ class ReadingEvent(TypedDict):
     id: str
     deviceId: str
     name: str
-    state: Literal["on", "off"]
-    luminosity: float
-    temperature: float
-    humidity: float
+    state: Literal["on", "off"] | None
+    luminosity: float | None
+    temperature: float | None
+    humidity: float | None
     thresholds: Thresholds
     commandStatus: CommandStatus
     receivedAt: str
@@ -40,14 +40,15 @@ class DeleteEvent(TypedDict):
     deviceId: str
 
 
+type EventType = Literal["upsert", "delete", "reading"]
 type EventPayload = UpsertEvent | ReadingEvent | DeleteEvent
 
-type Event = tuple[str, EventPayload]
+type Event = tuple[EventType, EventPayload]
 
 
 class Hub:
     def __init__(self) -> None:
-        self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
+        self._subs: dict[str, set[asyncio.Queue[Event]]] = defaultdict(set)
 
     def subscribe(self, user_id: str) -> asyncio.Queue[Event]:
         queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=100)

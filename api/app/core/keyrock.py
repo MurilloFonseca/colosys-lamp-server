@@ -56,9 +56,13 @@ USER_CACHE_TTL: float = 30  # 30 s
 
 # --- Helpers -------------------------------------------------------------------
 def _err_msg(res: httpx.Response) -> str:
-    err: Error = res.json().get("error", {})
+    try:
+        err: Error = res.json().get("error", {})
 
-    return err.get("message", f"HTTP {res.status_code}")
+        return err.get("message", f"HTTP {res.status_code}")
+
+    except AttributeError:
+        return res.json()
 
 
 # --- Client --------------------------------------------------------------------
@@ -138,7 +142,7 @@ class KeyrockClient:
                 log.info("Waiting for keyrock (%d/%d): %s", i, attempts, exc)
                 await asyncio.sleep(delay)
 
-            raise RuntimeError(f"Keyrock not ready after {attempts} attempts: {last}")
+        raise RuntimeError(f"Keyrock not ready after {attempts} attempts: {last}")
 
     async def ensure_application(
         self,
@@ -239,7 +243,7 @@ class KeyrockClient:
 
     async def password_login(self, email: str, password: str) -> LoginResponse | None:
         basic: str = b64encode(
-            f"{self.client_id}{self.client_secret}".encode()
+            f"{self.client_id}:{self.client_secret}".encode()
         ).decode()
 
         r: httpx.Response = await self.http.post(
@@ -249,7 +253,7 @@ class KeyrockClient:
         )
 
         if r.status_code in (400, 401):
-            body: str = _err_msg(r)
+            body: str = _err_msg(r).lower()
 
             if "client" in body or "grant type" in body:
                 raise KeyrockError(502, f"OAuth client rejected by Keyrock: {body}")

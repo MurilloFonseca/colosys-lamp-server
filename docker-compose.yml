@@ -1,4 +1,4 @@
-name: colosys-back
+name: colosys-server
 
 services:
   # ---------------------------------------------------------------- MySQL --
@@ -6,7 +6,7 @@ services:
   mysql-db:
     image: mysql:5.7
     platform: linux/amd64          # mysql:5.7 has no ARM build (Apple Silicon)
-    container_name: auth-mysql
+    container_name: mysql-colosys
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password
     environment:
@@ -24,7 +24,7 @@ services:
   # FIWARE Identity Manager. Web GUI + REST API on port 3005.
   keyrock:
     image: ${KEYROCK_IMAGE:-quay.io/fiware/idm}
-    container_name: auth-keyrock
+    container_name: keyrock-colosys
     restart: unless-stopped
     depends_on:
       mysql-db:
@@ -47,7 +47,7 @@ services:
   # Your back-end: register / login / logout / me, backed by Keyrock.
   api:
     build: ./api
-    container_name: auth-api
+    container_name: colosys-api
     restart: unless-stopped
     depends_on:
       - keyrock

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from typing import Any
@@ -12,6 +13,8 @@ from . import config
 from .common.exeptions import FiwareError, KeyrockError
 
 type Lifespan = Callable[[FastAPI], AbstractAsyncContextManager[None]]
+
+log: logging.Logger = logging.getLogger("api")
 
 
 class AppCreator:
@@ -34,12 +37,15 @@ class AppCreator:
             if exc.status in (400, 409):
                 return JSONResponse({"detail": exc.message}, status_code=exc.status)
 
+            log.error("Keyrock error %s: %s", exc.status, exc.message)
             return JSONResponse({"detail": "Identity service error"}, status_code=502)
 
         @self.app.exception_handler(FiwareError)
         async def fiware_error_handler(_: Request, exc: FiwareError) -> JSONResponse:
             if exc.status == 409:
                 return JSONResponse({"detail": exc.message}, status_code=409)
+
+            log.error("FIWARE error %s: %s", exc.status, exc.message)
 
             if exc.status == 503:
                 return JSONResponse(
@@ -71,6 +77,7 @@ class AppCreator:
 
         @self.app.exception_handler(httpx.HTTPError)
         async def http_error_handler(_: Request, exc: httpx.HTTPError) -> JSONResponse:
+            log.error("Cannot reach Keyrock: %s", exc)
             return JSONResponse(
                 {"detail": "Identity service unavailable"}, status_code=502
             )
