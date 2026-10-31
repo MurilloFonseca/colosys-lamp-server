@@ -437,6 +437,7 @@ class FiwareClient:
 
         if r.status_code == 201:
             log.info("Created Orion subscription: %s", description)
+            return
 
         raise FiwareError(502, f"Orion subscription: {_orion_err(r)}")
 
