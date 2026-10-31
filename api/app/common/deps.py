@@ -34,6 +34,7 @@ def get_fiware(request: Request) -> FiwareClient:
 async def current_user(request: Request, kr: KeyrockClient = Depends(get_kr)) -> User:
     token: str | None = request.cookies.get(config.COOKIE_NAME)
     user: User | None = await kr.get_user(token) if token else None
+
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
